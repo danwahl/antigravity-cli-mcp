@@ -1,13 +1,15 @@
-# gemini-cli-mcp
+# agy-mcp
 
-Minimal MCP server that wraps Gemini CLI as a single tool for use from Claude Code.
+Minimal MCP server that wraps Antigravity CLI (`agy`) as a single tool for use from Claude Code. Formerly gemini-cli-mcp; Gemini CLI is deprecated.
 
 ## Key decisions
 - One tool (`cli`), no prompt wrappers
 - Uses `--output-format json` (not stream-json) since we return final results
-- Uses `--approval-mode yolo` for headless operation (auto-enables sandbox)
+- Uses `--dangerously-skip-permissions` for headless operation
+- Resumes with `--conversation <id>`; conversations are workspace-scoped, so `cwd` must match
+- Our own timer kills the process group on timeout; `--print-timeout` is not used
+- agy's JSON result is flat (`conversation_id`, `status`, `response`, `usage`), no per-tool or per-model stats
 - MCP SDK v1.x (v2 is pre-alpha, not production ready)
-- `--allowed-tools` flag is deprecated; `--approval-mode yolo` covers all tools
 
 ## Design principle: Parsimony
 This project is intentionally minimal. Before adding any code, ask:
@@ -50,7 +52,7 @@ Before every commit, run:
 - No classes. Plain functions only.
 - No barrel exports
 
-## Gemini CLI tool names (for reference)
-read_file, write_file, edit, run_shell_command, list_directory,
-glob, search_file_content, web_fetch, google_web_search,
-save_memory, write_todos, ask_user, activate_skill, browser_agent
+## agy reference
+- `agy --help` lists flags; `agy changelog` documents headless behavior changes
+- Fatal errors: `AGY_ERROR: {...}` line on stderr, exit code 3
+- `agy models` lists model names (no `--output-format` flag on that subcommand as of 1.2.7)

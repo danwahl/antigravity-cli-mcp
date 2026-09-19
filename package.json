@@ -1,16 +1,28 @@
 {
-  "name": "@danwahl/gemini-cli-mcp",
+  "name": "@danwahl/agy-mcp",
   "type": "module",
-  "version": "0.1.8",
-  "description": "MCP server that exposes Gemini CLI as a single tool for Claude Code",
+  "version": "0.2.0",
+  "description": "MCP server that exposes Antigravity CLI (agy) as a single tool for Claude Code",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/danwahl/gemini-cli-mcp.git"
   },
-  "keywords": ["mcp", "gemini", "claude", "llm", "ai"],
-  "engines": { "node": ">=18" },
-  "bin": { "gemini-cli-mcp": "dist/index.js" },
+  "keywords": [
+    "mcp",
+    "antigravity",
+    "agy",
+    "gemini",
+    "claude",
+    "llm",
+    "ai"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "agy-mcp": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
     "test": "node --import tsx/esm --test src/lib.test.ts",
