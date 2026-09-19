@@ -1,175 +1,135 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import {
-  buildGeminiArgs,
-  parseGeminiOutput,
-  extractStructuredOutput,
-  type GeminiOutput,
-} from "./lib.js";
+import { buildAgyArgs, parseAgyOutput, extractAgyError } from "./lib.js";
 
-describe("buildGeminiArgs", () => {
+describe("buildAgyArgs", () => {
   it("omits --model when not provided", () => {
-    const args = buildGeminiArgs("hello", undefined);
+    const args = buildAgyArgs("hello", undefined);
     assert.ok(!args.includes("--model"));
   });
 
   it("includes --model when provided", () => {
-    const args = buildGeminiArgs("hello", "gemini-2.5-pro");
+    const args = buildAgyArgs("hello", "gemini-3-pro");
     const idx = args.indexOf("--model");
     assert.ok(idx !== -1);
-    assert.equal(args[idx + 1], "gemini-2.5-pro");
+    assert.equal(args[idx + 1], "gemini-3-pro");
   });
 
-  it("passes model string through unchanged", () => {
-    const args = buildGeminiArgs("hello", "gemini-1.5-flash-001");
-    assert.equal(args[args.indexOf("--model") + 1], "gemini-1.5-flash-001");
-  });
-
-  it("includes --resume when sessionId provided", () => {
-    const args = buildGeminiArgs("x", undefined, "my-session-id");
-    const idx = args.indexOf("--resume");
+  it("includes --conversation when conversationId provided", () => {
+    const args = buildAgyArgs("x", undefined, "my-conversation-id");
+    const idx = args.indexOf("--conversation");
     assert.ok(idx !== -1);
-    assert.equal(args[idx + 1], "my-session-id");
+    assert.equal(args[idx + 1], "my-conversation-id");
   });
 
-  it("omits --resume when sessionId not provided", () => {
-    const args = buildGeminiArgs("x", undefined);
-    assert.ok(!args.includes("--resume"));
+  it("omits --conversation when conversationId not provided", () => {
+    const args = buildAgyArgs("x", undefined);
+    assert.ok(!args.includes("--conversation"));
   });
 
-  it("includes --approval-mode yolo", () => {
-    const args = buildGeminiArgs("x", undefined);
-    const idx = args.indexOf("--approval-mode");
-    assert.ok(idx !== -1);
-    assert.equal(args[idx + 1], "yolo");
+  it("includes --dangerously-skip-permissions", () => {
+    const args = buildAgyArgs("x", undefined);
+    assert.ok(args.includes("--dangerously-skip-permissions"));
   });
 
   it("includes --output-format json", () => {
-    const args = buildGeminiArgs("x", undefined);
+    const args = buildAgyArgs("x", undefined);
     const idx = args.indexOf("--output-format");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "json");
   });
+
+  it("passes the prompt via -p", () => {
+    const args = buildAgyArgs("do the thing", undefined);
+    assert.equal(args[args.indexOf("-p") + 1], "do the thing");
+  });
 });
 
-describe("parseGeminiOutput", () => {
-  it("parses valid JSON response", () => {
-    const result = parseGeminiOutput(JSON.stringify({ response: "Hello, world!" }));
-    assert.equal(result.response, "Hello, world!");
-    assert.equal(result.sessionId, null);
-    assert.equal(result.stats, undefined);
+describe("parseAgyOutput", () => {
+  const sample = {
+    conversation_id: "dc381a74-c1ae-44b2-82cf-f55847818731",
+    status: "SUCCESS",
+    response: "pong\n",
+    duration_seconds: 2.615,
+    num_turns: 1,
+    usage: {
+      input_tokens: 12447,
+      output_tokens: 122,
+      thinking_tokens: 121,
+      cache_read_tokens: 0,
+      total_tokens: 12569,
+    },
+  };
+
+  it("parses a real agy JSON result", () => {
+    const result = parseAgyOutput(JSON.stringify(sample));
+    assert.equal(result.conversationId, sample.conversation_id);
+    assert.equal(result.response, "pong\n");
+    assert.equal(result.status, "SUCCESS");
+    assert.deepEqual(result.usage, {
+      inputTokens: 12447,
+      outputTokens: 122,
+      thinkingTokens: 121,
+      cacheReadTokens: 0,
+      totalTokens: 12569,
+    });
   });
 
-  it("extracts session_id", () => {
-    const result = parseGeminiOutput(
-      JSON.stringify({ session_id: "abc-123", response: "ok" })
-    );
-    assert.equal(result.sessionId, "abc-123");
+  it("returns nulls for missing optional fields", () => {
+    const result = parseAgyOutput(JSON.stringify({ response: "ok" }));
+    assert.equal(result.conversationId, null);
+    assert.equal(result.status, null);
+    assert.equal(result.usage, null);
   });
 
-  it("extracts stats field", () => {
-    const stats = { models: {}, tools: {} };
-    const result = parseGeminiOutput(JSON.stringify({ response: "ok", stats }));
-    assert.deepEqual(result.stats, stats);
-  });
-
-  it("handles missing stats gracefully", () => {
-    const result = parseGeminiOutput(JSON.stringify({ response: "ok" }));
-    assert.equal(result.stats, undefined);
+  it("defaults missing usage counters to zero", () => {
+    const result = parseAgyOutput(JSON.stringify({ response: "ok", usage: { total_tokens: 5 } }));
+    assert.deepEqual(result.usage, {
+      inputTokens: 0,
+      outputTokens: 0,
+      thinkingTokens: 0,
+      cacheReadTokens: 0,
+      totalTokens: 5,
+    });
   });
 
   it("returns raw stdout when JSON parsing fails", () => {
     const raw = "this is not json";
-    const result = parseGeminiOutput(raw);
+    const result = parseAgyOutput(raw);
     assert.equal(result.response, raw);
-    assert.equal(result.sessionId, null);
+    assert.equal(result.conversationId, null);
   });
 
   it("returns raw stdout for JSON without response field", () => {
     const raw = JSON.stringify({ message: "unexpected shape" });
-    const result = parseGeminiOutput(raw);
+    const result = parseAgyOutput(raw);
     assert.equal(result.response, raw);
   });
 
   it("handles empty stdout", () => {
-    const result = parseGeminiOutput("");
+    const result = parseAgyOutput("");
     assert.equal(result.response, "");
   });
 
   it("trims surrounding whitespace before parsing", () => {
-    const result = parseGeminiOutput(
-      "  " + JSON.stringify({ response: "trimmed" }) + "\n"
-    );
+    const result = parseAgyOutput("  " + JSON.stringify({ response: "trimmed" }) + "\n");
     assert.equal(result.response, "trimmed");
   });
 });
 
-describe("extractStructuredOutput", () => {
-  it("passes through sessionId and response", () => {
-    const output: GeminiOutput = { sessionId: "abc", response: "hello" };
-    const result = extractStructuredOutput(output);
-    assert.equal(result.sessionId, "abc");
-    assert.equal(result.response, "hello");
+describe("extractAgyError", () => {
+  it("returns null when no AGY_ERROR line is present", () => {
+    assert.equal(extractAgyError("warning: something\n"), null);
   });
 
-  it("returns empty records when no stats", () => {
-    const output: GeminiOutput = { sessionId: null, response: "hi" };
-    const result = extractStructuredOutput(output);
-    assert.deepEqual(result.models, {});
-    assert.deepEqual(result.tools, {});
+  it("formats status and message from the AGY_ERROR payload", () => {
+    const stderr =
+      "some log line\n" +
+      'AGY_ERROR: {"status":"RESOURCE_EXHAUSTED","message":"quota exceeded","retryable":true}\n';
+    assert.equal(extractAgyError(stderr), "RESOURCE_EXHAUSTED: quota exceeded");
   });
 
-  it("extracts model token totals", () => {
-    const output: GeminiOutput = {
-      sessionId: null,
-      response: "hi",
-      stats: {
-        models: {
-          "gemini-2.5-pro": { tokens: { total: 100 } },
-          "gemini-2.0-flash": { tokens: { total: 50 } },
-        },
-      },
-    };
-    assert.deepEqual(extractStructuredOutput(output).models, {
-      "gemini-2.5-pro": 100,
-      "gemini-2.0-flash": 50,
-    });
-  });
-
-  it("omits models with no token data", () => {
-    const output: GeminiOutput = {
-      sessionId: null,
-      response: "hi",
-      stats: { models: { "gemini-2.5-pro": {} } },
-    };
-    assert.deepEqual(extractStructuredOutput(output).models, {});
-  });
-
-  it("extracts tool call counts from byName", () => {
-    const output: GeminiOutput = {
-      sessionId: null,
-      response: "hi",
-      stats: {
-        tools: {
-          byName: {
-            list_directory: { count: 2 },
-            web_fetch: { count: 1 },
-          },
-        },
-      },
-    };
-    assert.deepEqual(extractStructuredOutput(output).tools, {
-      list_directory: 2,
-      web_fetch: 1,
-    });
-  });
-
-  it("returns empty tools when no tool calls", () => {
-    const output: GeminiOutput = {
-      sessionId: null,
-      response: "hi",
-      stats: { tools: { totalCalls: 0, byName: {} } },
-    };
-    assert.deepEqual(extractStructuredOutput(output).tools, {});
+  it("falls back to the raw payload when it is not valid JSON", () => {
+    assert.equal(extractAgyError("AGY_ERROR: not json"), "not json");
   });
 });
