@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danwahl/antigravity-mcp.git"
+    "url": "git+https://github.com/danwahl/antigravity-mcp.git"
   },
   "keywords": [
     "mcp",
@@ -24,12 +24,13 @@
     "antigravity-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc && shx chmod +x dist/*.js",
+    "build": "rm -rf dist && tsc && shx chmod +x dist/*.js",
     "test": "node --import tsx/esm --test src/lib.test.ts",
     "prepublishOnly": "npm run build"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/*.test.js"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.21.0",
