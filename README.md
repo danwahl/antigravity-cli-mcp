@@ -32,13 +32,13 @@ npm run build
 **User install** (available across all projects):
 
 ```sh
-claude mcp add agy -s user -- npx -y @danwahl/antigravity-cli-mcp
+claude mcp add antigravity -s user -- npx -y @danwahl/antigravity-cli-mcp
 ```
 
 **Project install** (shared with your team via `.mcp.json`):
 
 ```sh
-claude mcp add agy -s project -- npx -y @danwahl/antigravity-cli-mcp
+claude mcp add antigravity -s project -- npx -y @danwahl/antigravity-cli-mcp
 ```
 
 Or from source, replace `npx -y @danwahl/antigravity-cli-mcp` with `node /absolute/path/to/antigravity-cli-mcp/dist/index.js`.

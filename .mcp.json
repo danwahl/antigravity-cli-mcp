@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "agy": {
+    "antigravity": {
       "type": "stdio",
       "command": "node",
       "args": ["dist/index.js"]
