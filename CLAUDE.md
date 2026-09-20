@@ -6,7 +6,8 @@ Minimal MCP server that wraps Antigravity CLI (`agy`) as a single tool for use f
 - One tool (`cli`), no prompt wrappers
 - Uses `--output-format json` (not stream-json) since we return final results
 - Uses `--dangerously-skip-permissions` for headless operation
-- Resumes with `--conversation <id>`; conversations are workspace-scoped, so `cwd` must match
+- Passes `--add-dir <cwd>`: in headless mode the spawn cwd alone does not register a workspace, and the agent then works in its own scratch dir
+- Resumes with `--conversation <id>`
 - Our own timer kills the process group on timeout; `--print-timeout` is not used
 - agy's JSON result is flat (`conversation_id`, `status`, `response`, `usage`), no per-tool or per-model stats
 - MCP SDK v1.x (v2 is pre-alpha, not production ready)

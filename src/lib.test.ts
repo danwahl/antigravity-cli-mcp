@@ -4,43 +4,48 @@ import { buildAgyArgs, parseAgyOutput, extractAgyError } from "./lib.js";
 
 describe("buildAgyArgs", () => {
   it("omits --model when not provided", () => {
-    const args = buildAgyArgs("hello", undefined);
+    const args = buildAgyArgs("hello", "/w", undefined);
     assert.ok(!args.includes("--model"));
   });
 
   it("includes --model when provided", () => {
-    const args = buildAgyArgs("hello", "gemini-3-pro");
+    const args = buildAgyArgs("hello", "/w", "gemini-3-pro");
     const idx = args.indexOf("--model");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "gemini-3-pro");
   });
 
   it("includes --conversation when conversationId provided", () => {
-    const args = buildAgyArgs("x", undefined, "my-conversation-id");
+    const args = buildAgyArgs("x", "/w", undefined, "my-conversation-id");
     const idx = args.indexOf("--conversation");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "my-conversation-id");
   });
 
   it("omits --conversation when conversationId not provided", () => {
-    const args = buildAgyArgs("x", undefined);
+    const args = buildAgyArgs("x", "/w", undefined);
     assert.ok(!args.includes("--conversation"));
   });
 
   it("includes --dangerously-skip-permissions", () => {
-    const args = buildAgyArgs("x", undefined);
+    const args = buildAgyArgs("x", "/w", undefined);
     assert.ok(args.includes("--dangerously-skip-permissions"));
   });
 
   it("includes --output-format json", () => {
-    const args = buildAgyArgs("x", undefined);
+    const args = buildAgyArgs("x", "/w", undefined);
     const idx = args.indexOf("--output-format");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "json");
   });
 
+  it("adds cwd to the workspace via --add-dir", () => {
+    const args = buildAgyArgs("x", "/some/dir", undefined);
+    assert.equal(args[args.indexOf("--add-dir") + 1], "/some/dir");
+  });
+
   it("passes the prompt via -p", () => {
-    const args = buildAgyArgs("do the thing", undefined);
+    const args = buildAgyArgs("do the thing", "/w", undefined);
     assert.equal(args[args.indexOf("-p") + 1], "do the thing");
   });
 });

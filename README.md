@@ -9,7 +9,7 @@ This project started as `gemini-cli-mcp`, wrapping Gemini CLI. Gemini CLI is dep
 Claude Code sends prompts to this server via MCP. The server spawns `agy -p "..."` in headless mode and returns the response. Antigravity inherits your Google sign-in, so no API key is required.
 
 ```
-Claude Code ──MCP/stdio──▶ agy-mcp ──spawn──▶ agy -p "..." --output-format json
+Claude Code ──MCP/stdio──▶ agy-mcp ──spawn──▶ agy -p "..." --output-format json --add-dir <cwd>
 ```
 
 ## Prerequisites
@@ -78,7 +78,7 @@ Each call returns structured content alongside the text response:
 
 ### What Antigravity can do
 
-`agy` runs with `--dangerously-skip-permissions`, giving it full tool access: read/write files, run shell commands, web search, and more. It operates in the `cwd` you specify. Persisted `settings.json` permission rules still apply.
+`agy` runs with `--dangerously-skip-permissions`, giving it full tool access: read/write files, run shell commands, web search, and more. The `cwd` you specify is passed as `--add-dir` so it becomes the agent's workspace; the spawn working directory alone is not enough in headless mode. Persisted `settings.json` permission rules still apply.
 
 ### Errors
 

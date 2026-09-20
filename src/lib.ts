@@ -3,10 +3,19 @@ import { existsSync } from "node:fs";
 
 export function buildAgyArgs(
   prompt: string,
+  cwd: string,
   model: string | undefined,
   conversationId?: string
 ): string[] {
-  const args = ["-p", prompt, "--output-format", "json", "--dangerously-skip-permissions"];
+  // The spawn cwd alone does not register a workspace in headless mode; without
+  // --add-dir the agent is told it has no active workspace and works in its
+  // own scratch directory.
+  const args = [
+    "-p", prompt,
+    "--output-format", "json",
+    "--dangerously-skip-permissions",
+    "--add-dir", cwd,
+  ];
   if (model) {
     args.push("--model", model);
   }
@@ -115,7 +124,7 @@ export function runAgy(
   }
 
   return new Promise((resolve) => {
-    const args = buildAgyArgs(prompt, model, conversationId);
+    const args = buildAgyArgs(prompt, cwd, model, conversationId);
     let child: ReturnType<typeof spawn>;
 
     try {
