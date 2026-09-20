@@ -1,4 +1,4 @@
-# agy-mcp
+# antigravity-mcp
 
 Minimal MCP server that wraps Antigravity CLI (`agy`) as a single tool for use from Claude Code. Formerly gemini-cli-mcp; Gemini CLI is deprecated.
 

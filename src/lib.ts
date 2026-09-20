@@ -138,6 +138,10 @@ export function runAgy(
     let stderr = "";
     let settled = false;
 
+    // Decode as UTF-8 streams so multi-byte characters split across chunks survive.
+    child.stdout?.setEncoding("utf8");
+    child.stderr?.setEncoding("utf8");
+
     // Kill the entire process group (agy + tool grandchildren).
     // Without this, grandchildren can keep stdio pipes open and `close` never fires.
     const killGroup = (sig: NodeJS.Signals) => {
@@ -164,12 +168,12 @@ export function runAgy(
       finish(errorResult(`agy timed out after ${timeoutMs / 1000}s`));
     }, timeoutMs);
 
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString();
+    child.stdout?.on("data", (chunk: string) => {
+      stdout += chunk;
     });
 
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString();
+    child.stderr?.on("data", (chunk: string) => {
+      stderr += chunk;
     });
 
     child.on("error", (err) => {
@@ -183,10 +187,11 @@ export function runAgy(
       ));
     });
 
-    child.on("close", (code) => {
+    child.on("close", (code, signal) => {
       if (code !== 0) {
-        const detail = extractAgyError(stderr) || stderr.trim() || stdout.trim() || `exit code ${code}`;
-        finish(errorResult(`agy exited with code ${code}: ${detail}`));
+        const how = code === null ? `signal ${signal}` : `code ${code}`;
+        const detail = extractAgyError(stderr) || stderr.trim() || stdout.trim() || how;
+        finish(errorResult(`agy exited with ${how}: ${detail}`));
         return;
       }
 

@@ -1,12 +1,12 @@
 {
-  "name": "@danwahl/agy-mcp",
+  "name": "@danwahl/antigravity-mcp",
   "type": "module",
   "version": "0.2.0",
   "description": "MCP server that exposes Antigravity CLI (agy) as a single tool for Claude Code",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danwahl/agy-mcp.git"
+    "url": "https://github.com/danwahl/antigravity-mcp.git"
   },
   "keywords": [
     "mcp",
@@ -21,7 +21,7 @@
     "node": ">=18"
   },
   "bin": {
-    "agy-mcp": "dist/index.js"
+    "antigravity-mcp": "dist/index.js"
   },
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
