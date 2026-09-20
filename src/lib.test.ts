@@ -4,48 +4,57 @@ import { buildAgyArgs, parseAgyOutput, extractAgyError } from "./lib.js";
 
 describe("buildAgyArgs", () => {
   it("omits --model when not provided", () => {
-    const args = buildAgyArgs("hello", "/w", undefined);
+    const args = buildAgyArgs("hello", "/w");
     assert.ok(!args.includes("--model"));
   });
 
   it("includes --model when provided", () => {
-    const args = buildAgyArgs("hello", "/w", "gemini-3-pro");
+    const args = buildAgyArgs("hello", "/w", { model: "gemini-3-pro" });
     const idx = args.indexOf("--model");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "gemini-3-pro");
   });
 
   it("includes --conversation when conversationId provided", () => {
-    const args = buildAgyArgs("x", "/w", undefined, "my-conversation-id");
+    const args = buildAgyArgs("x", "/w", { conversationId: "my-conversation-id" });
     const idx = args.indexOf("--conversation");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "my-conversation-id");
   });
 
   it("omits --conversation when conversationId not provided", () => {
-    const args = buildAgyArgs("x", "/w", undefined);
+    const args = buildAgyArgs("x", "/w");
     assert.ok(!args.includes("--conversation"));
   });
 
   it("includes --dangerously-skip-permissions", () => {
-    const args = buildAgyArgs("x", "/w", undefined);
+    const args = buildAgyArgs("x", "/w");
     assert.ok(args.includes("--dangerously-skip-permissions"));
   });
 
   it("includes --output-format json", () => {
-    const args = buildAgyArgs("x", "/w", undefined);
+    const args = buildAgyArgs("x", "/w");
     const idx = args.indexOf("--output-format");
     assert.ok(idx !== -1);
     assert.equal(args[idx + 1], "json");
   });
 
+  it("includes --effort when provided", () => {
+    const args = buildAgyArgs("x", "/w", { effort: "low" });
+    assert.equal(args[args.indexOf("--effort") + 1], "low");
+  });
+
+  it("omits --effort when not provided", () => {
+    assert.ok(!buildAgyArgs("x", "/w").includes("--effort"));
+  });
+
   it("adds cwd to the workspace via --add-dir", () => {
-    const args = buildAgyArgs("x", "/some/dir", undefined);
+    const args = buildAgyArgs("x", "/some/dir");
     assert.equal(args[args.indexOf("--add-dir") + 1], "/some/dir");
   });
 
   it("passes the prompt via -p", () => {
-    const args = buildAgyArgs("do the thing", "/w", undefined);
+    const args = buildAgyArgs("do the thing", "/w");
     assert.equal(args[args.indexOf("-p") + 1], "do the thing");
   });
 });

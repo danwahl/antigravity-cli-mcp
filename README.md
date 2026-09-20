@@ -51,7 +51,8 @@ Verify with `claude mcp list`.
 |------------------|--------|----------|-------------|
 | `prompt`         | string | yes      | Task or question to send to Antigravity |
 | `cwd`            | string | yes      | Absolute path to the working directory (agy's workspace) |
-| `model`          | string | no       | Model name. Omit for agy's default. `agy models` lists the options. |
+| `model`          | string | no       | Model name, e.g. `gemini-3.1-pro-high`, `gemini-3.8-flash-medium`, `claude-sonnet-4-6`. Omit for agy's default. `agy models` lists the options. |
+| `effort`         | string | no       | Reasoning effort: `low`, `medium`, or `high`. Omit for agy's default. |
 | `conversationId` | string | no       | Resume a previous conversation. Returned in the structured output of each call. Pass the same `cwd`, since conversations are workspace-scoped. |
 | `timeout`        | number | no       | Seconds before the run is killed. Default 120. |
 

@@ -1,12 +1,15 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 
-export function buildAgyArgs(
-  prompt: string,
-  cwd: string,
-  model: string | undefined,
-  conversationId?: string
-): string[] {
+export type Effort = "low" | "medium" | "high";
+
+export interface AgyOptions {
+  model?: string;
+  effort?: Effort;
+  conversationId?: string;
+}
+
+export function buildAgyArgs(prompt: string, cwd: string, opts: AgyOptions = {}): string[] {
   // The spawn cwd alone does not register a workspace in headless mode; without
   // --add-dir the agent is told it has no active workspace and works in its
   // own scratch directory.
@@ -16,11 +19,14 @@ export function buildAgyArgs(
     "--dangerously-skip-permissions",
     "--add-dir", cwd,
   ];
-  if (model) {
-    args.push("--model", model);
+  if (opts.model) {
+    args.push("--model", opts.model);
   }
-  if (conversationId) {
-    args.push("--conversation", conversationId);
+  if (opts.effort) {
+    args.push("--effort", opts.effort);
+  }
+  if (opts.conversationId) {
+    args.push("--conversation", opts.conversationId);
   }
   return args;
 }
@@ -115,16 +121,15 @@ function errorResult(errorMessage: string): RunAgyResult {
 export function runAgy(
   prompt: string,
   cwd: string,
-  model: string | undefined,
   timeoutMs: number,
-  conversationId?: string
+  opts: AgyOptions = {}
 ): Promise<RunAgyResult> {
   if (!existsSync(cwd)) {
     return Promise.resolve(errorResult(`Working directory does not exist: ${cwd}`));
   }
 
   return new Promise((resolve) => {
-    const args = buildAgyArgs(prompt, cwd, model, conversationId);
+    const args = buildAgyArgs(prompt, cwd, opts);
     let child: ReturnType<typeof spawn>;
 
     try {

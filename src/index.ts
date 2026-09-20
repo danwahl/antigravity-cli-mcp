@@ -52,8 +52,13 @@ server.registerTool(
         .optional()
         .describe(
           "Model to use. Omit to use Antigravity's default. " +
-          "Run `agy models` to list available model names."
+          "Examples: \"gemini-3.1-pro-high\", \"gemini-3.1-pro-low\", \"gemini-3.8-flash-medium\", " +
+          "\"claude-sonnet-4-6\", \"claude-opus-4-6-thinking\". Run `agy models` for the full list."
         ),
+      effort: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .describe("Reasoning effort for the session. Omit to use Antigravity's default."),
       conversationId: z
         .string()
         .optional()
@@ -78,9 +83,9 @@ server.registerTool(
       openWorldHint: true,
     },
   },
-  async ({ prompt, cwd, model, conversationId, timeout }) => {
+  async ({ prompt, cwd, model, effort, conversationId, timeout }) => {
     const timeoutMs = (timeout ?? 120) * 1000;
-    const result = await runAgy(prompt, cwd, model, timeoutMs, conversationId);
+    const result = await runAgy(prompt, cwd, timeoutMs, { model, effort, conversationId });
 
     if (result.isError) {
       return {
