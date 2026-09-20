@@ -8,7 +8,10 @@ Minimal MCP server that wraps Antigravity CLI (`agy`) as a single tool for use f
 - Uses `--dangerously-skip-permissions` for headless operation
 - Passes `--add-dir <cwd>`: in headless mode the spawn cwd alone does not register a workspace, and the agent then works in its own scratch dir
 - Resumes with `--conversation <id>`
-- Our own timer kills the process group on timeout; `--print-timeout` is not used
+- `--sandbox` on by default (shell writes limited to /tmp; file tools unaffected); `sandbox: false` opts out
+- `--print-timeout` set from the tool timeout so agy exits cleanly with partial output; agy reports that as exit 0 / SUCCESS plus a stderr notice, which we detect and turn into an error. A process-group kill fires 5s later as a backstop, and MCP cancellation kills immediately
+- Without `--dangerously-skip-permissions` headless agy soft-denies tools and reports `denied_actions`; we surface those as errors
+- `--mode plan` is auto-approved in headless mode and does not block edits
 - agy's JSON result is flat (`conversation_id`, `status`, `response`, `usage`), no per-tool or per-model stats
 - MCP SDK v1.x (v2 is pre-alpha, not production ready)
 

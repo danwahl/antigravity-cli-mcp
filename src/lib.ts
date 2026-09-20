@@ -2,11 +2,17 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 
 export type Effort = "low" | "medium" | "high";
+export type Mode = "accept-edits" | "plan";
 
 export interface AgyOptions {
   model?: string;
   effort?: Effort;
+  mode?: Mode;
+  agent?: string;
+  sandbox?: boolean;
+  jsonSchema?: Record<string, unknown>;
   conversationId?: string;
+  timeoutMs?: number;
 }
 
 export function buildAgyArgs(prompt: string, cwd: string, opts: AgyOptions = {}): string[] {
@@ -19,14 +25,31 @@ export function buildAgyArgs(prompt: string, cwd: string, opts: AgyOptions = {})
     "--dangerously-skip-permissions",
     "--add-dir", cwd,
   ];
+  if (opts.sandbox ?? true) {
+    args.push("--sandbox");
+  }
   if (opts.model) {
     args.push("--model", opts.model);
   }
   if (opts.effort) {
     args.push("--effort", opts.effort);
   }
+  if (opts.mode) {
+    args.push("--mode", opts.mode);
+  }
+  if (opts.agent) {
+    args.push("--agent", opts.agent);
+  }
+  if (opts.jsonSchema) {
+    args.push("--json-schema", JSON.stringify(opts.jsonSchema));
+  }
   if (opts.conversationId) {
     args.push("--conversation", opts.conversationId);
+  }
+  if (opts.timeoutMs) {
+    // Let agy wind down on its own at the deadline and return partial output;
+    // the caller's kill timer is only a backstop.
+    args.push("--print-timeout", `${Math.ceil(opts.timeoutMs / 1000)}s`);
   }
   return args;
 }
@@ -44,30 +67,57 @@ export interface AgyOutput {
   response: string;
   status: string | null;
   usage: Usage | null;
+  structuredOutput: Record<string, unknown> | null;
+  durationSeconds: number | null;
+  numTurns: number | null;
+  deniedActions: string[];
 }
 
-const EMPTY_OUTPUT: AgyOutput = { conversationId: null, response: "", status: null, usage: null };
+export const EMPTY_OUTPUT: Readonly<AgyOutput> = {
+  conversationId: null,
+  response: "",
+  status: null,
+  usage: null,
+  structuredOutput: null,
+  durationSeconds: null,
+  numTurns: null,
+  deniedActions: [],
+};
 
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === "number" ? value : fallback;
 }
 
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function parseUsage(value: unknown): Usage | null {
-  if (value === null || typeof value !== "object") return null;
-  const u = value as Record<string, unknown>;
+  if (!isObject(value)) return null;
   return {
-    inputTokens: numberOr(u.input_tokens, 0),
-    outputTokens: numberOr(u.output_tokens, 0),
-    thinkingTokens: numberOr(u.thinking_tokens, 0),
-    cacheReadTokens: numberOr(u.cache_read_tokens, 0),
-    totalTokens: numberOr(u.total_tokens, 0),
+    inputTokens: numberOr(value.input_tokens, 0),
+    outputTokens: numberOr(value.output_tokens, 0),
+    thinkingTokens: numberOr(value.thinking_tokens, 0),
+    cacheReadTokens: numberOr(value.cache_read_tokens, 0),
+    totalTokens: numberOr(value.total_tokens, 0),
   };
+}
+
+function parseDeniedActions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((d) => (isObject(d) && typeof d.action === "string" ? d.action : null))
+    .filter((a): a is string => a !== null);
 }
 
 export function parseAgyOutput(stdout: string): AgyOutput {
   const trimmed = stdout.trim();
   if (!trimmed) {
-    return EMPTY_OUTPUT;
+    return { ...EMPTY_OUTPUT };
   }
 
   let parsed: unknown;
@@ -77,19 +127,19 @@ export function parseAgyOutput(stdout: string): AgyOutput {
     return { ...EMPTY_OUTPUT, response: trimmed };
   }
 
-  if (parsed === null || typeof parsed !== "object") {
-    return { ...EMPTY_OUTPUT, response: trimmed };
-  }
-  const obj = parsed as Record<string, unknown>;
-  if (typeof obj.response !== "string") {
+  if (!isObject(parsed) || typeof parsed.response !== "string") {
     return { ...EMPTY_OUTPUT, response: trimmed };
   }
 
   return {
-    conversationId: typeof obj.conversation_id === "string" ? obj.conversation_id : null,
-    response: obj.response,
-    status: typeof obj.status === "string" ? obj.status : null,
-    usage: parseUsage(obj.usage),
+    conversationId: typeof parsed.conversation_id === "string" ? parsed.conversation_id : null,
+    response: parsed.response,
+    status: typeof parsed.status === "string" ? parsed.status : null,
+    usage: parseUsage(parsed.usage),
+    structuredOutput: isObject(parsed.structured_output) ? parsed.structured_output : null,
+    durationSeconds: numberOrNull(parsed.duration_seconds),
+    numTurns: numberOrNull(parsed.num_turns),
+    deniedActions: parseDeniedActions(parsed.denied_actions),
   };
 }
 
@@ -108,28 +158,54 @@ export function extractAgyError(stderr: string): string | null {
   }
 }
 
+// On --print-timeout expiry agy exits 0 with status SUCCESS and a stderr notice.
+export function hitPrintTimeout(stderr: string): boolean {
+  return /print timeout after .* with turn in progress/.test(stderr);
+}
+
 export interface RunAgyResult {
   output: AgyOutput;
   isError: boolean;
   errorMessage?: string;
 }
 
-function errorResult(errorMessage: string): RunAgyResult {
-  return { output: EMPTY_OUTPUT, isError: true, errorMessage };
+function errorResult(errorMessage: string, output: AgyOutput = { ...EMPTY_OUTPUT }): RunAgyResult {
+  return { output, isError: true, errorMessage };
 }
+
+// Classify a completed (exit 0) run. Exposed for testing.
+export function classifyRun(output: AgyOutput, stderr: string, timeoutMs: number): RunAgyResult {
+  if (hitPrintTimeout(stderr)) {
+    return errorResult(
+      `agy timed out after ${timeoutMs / 1000}s; partial response returned in structured output`,
+      output
+    );
+  }
+  if (output.deniedActions.length > 0) {
+    return errorResult(
+      `agy was denied permission for: ${output.deniedActions.join(", ")}. ` +
+        "Check permissions.deny rules in agy's settings.json.",
+      output
+    );
+  }
+  return { output, isError: false };
+}
+
+const KILL_GRACE_MS = 5000;
 
 export function runAgy(
   prompt: string,
   cwd: string,
   timeoutMs: number,
-  opts: AgyOptions = {}
+  opts: AgyOptions = {},
+  signal?: AbortSignal
 ): Promise<RunAgyResult> {
   if (!existsSync(cwd)) {
     return Promise.resolve(errorResult(`Working directory does not exist: ${cwd}`));
   }
 
   return new Promise((resolve) => {
-    const args = buildAgyArgs(prompt, cwd, opts);
+    const args = buildAgyArgs(prompt, cwd, { ...opts, timeoutMs });
     let child: ReturnType<typeof spawn>;
 
     try {
@@ -158,20 +234,36 @@ export function runAgy(
       }
     };
 
+    const terminate = () => {
+      killGroup("SIGTERM");
+      setTimeout(() => killGroup("SIGKILL"), KILL_GRACE_MS).unref();
+    };
+
     const finish = (r: RunAgyResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
       resolve(r);
     };
 
+    // Backstop: agy should exit on its own via --print-timeout, but if it doesn't
+    // (or grandchildren keep pipes open), kill the group and resolve without
+    // waiting for `close`.
     const timer = setTimeout(() => {
-      killGroup("SIGTERM");
-      setTimeout(() => killGroup("SIGKILL"), 5000).unref();
-      // Resolve immediately — don't wait for `close`, which may never fire
-      // if grandchildren keep stdio pipes open.
-      finish(errorResult(`agy timed out after ${timeoutMs / 1000}s`));
-    }, timeoutMs);
+      terminate();
+      finish(errorResult(`agy timed out after ${timeoutMs / 1000}s and was killed`));
+    }, timeoutMs + KILL_GRACE_MS);
+
+    const onAbort = () => {
+      terminate();
+      finish(errorResult("agy call was cancelled"));
+    };
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
 
     child.stdout?.on("data", (chunk: string) => {
       stdout += chunk;
@@ -192,15 +284,15 @@ export function runAgy(
       ));
     });
 
-    child.on("close", (code, signal) => {
+    child.on("close", (code, sig) => {
       if (code !== 0) {
-        const how = code === null ? `signal ${signal}` : `code ${code}`;
+        const how = code === null ? `signal ${sig}` : `code ${code}`;
         const detail = extractAgyError(stderr) || stderr.trim() || stdout.trim() || how;
         finish(errorResult(`agy exited with ${how}: ${detail}`));
         return;
       }
 
-      finish({ output: parseAgyOutput(stdout), isError: false });
+      finish(classifyRun(parseAgyOutput(stdout), stderr, timeoutMs));
     });
   });
 }

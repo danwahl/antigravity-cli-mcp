@@ -1,7 +1,7 @@
 {
   "name": "@danwahl/antigravity-mcp",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "MCP server that exposes Antigravity CLI (agy) as a single tool for Claude Code",
   "license": "MIT",
   "repository": {

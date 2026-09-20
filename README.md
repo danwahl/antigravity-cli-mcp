@@ -47,14 +47,18 @@ Verify with `claude mcp list`.
 
 ## Tool: `cli`
 
-| Parameter        | Type   | Required | Description |
-|------------------|--------|----------|-------------|
-| `prompt`         | string | yes      | Task or question to send to Antigravity |
-| `cwd`            | string | yes      | Absolute path to the working directory (agy's workspace) |
-| `model`          | string | no       | Model name, e.g. `gemini-3.1-pro-high`, `gemini-3.8-flash-medium`, `claude-sonnet-4-6`. Omit for agy's default. `agy models` lists the options. |
-| `effort`         | string | no       | Reasoning effort: `low`, `medium`, or `high`. Omit for agy's default. |
-| `conversationId` | string | no       | Resume a previous conversation. Returned in the structured output of each call. Pass the same `cwd`, since conversations are workspace-scoped. |
-| `timeout`        | number | no       | Seconds before the run is killed. Default 120. |
+| Parameter        | Type    | Required | Description |
+|------------------|---------|----------|-------------|
+| `prompt`         | string  | yes      | Task or question to send to Antigravity |
+| `cwd`            | string  | yes      | Absolute path to the working directory (agy's workspace) |
+| `model`          | string  | no       | Model name, e.g. `gemini-3.1-pro-high`, `gemini-3.8-flash-medium`, `claude-sonnet-4-6`. Omit for agy's default. `agy models` lists the options. |
+| `effort`         | string  | no       | Reasoning effort: `low`, `medium`, or `high`. Omit for agy's default. |
+| `sandbox`        | boolean | no       | Default `true`. Shell commands can read anywhere but write only under `/tmp`; agy's file edit tools are unaffected. Set `false` for builds, installs, git commits, or tests that write to the workspace. |
+| `mode`           | string  | no       | `plan` or `accept-edits`. In headless mode plan review is auto-approved, so `plan` shapes the workflow but does not block edits. |
+| `agent`          | string  | no       | Custom agent name, defined at `.agents/agents/<name>.md` in the workspace or `~/.gemini/config/agents/`. |
+| `jsonSchema`     | object  | no       | JSON Schema enforced on the final answer. The parsed object comes back in `structuredOutput`. |
+| `conversationId` | string  | no       | Resume a previous conversation. Returned in the structured output of each call. Pass the same `cwd`, since conversations are workspace-scoped. |
+| `timeout`        | number  | no       | Seconds before the run is stopped. Default 120. On expiry the call returns an error; any partial response is in the structured output. |
 
 ### Structured output
 
@@ -71,7 +75,11 @@ Each call returns structured content alongside the text response:
     "thinkingTokens": 121,
     "cacheReadTokens": 0,
     "totalTokens": 12569
-  }
+  },
+  "structuredOutput": null,
+  "durationSeconds": 2.6,
+  "numTurns": 1,
+  "deniedActions": []
 }
 ```
 
@@ -79,7 +87,15 @@ Each call returns structured content alongside the text response:
 
 ### What Antigravity can do
 
-`agy` runs with `--dangerously-skip-permissions`, giving it full tool access: read/write files, run shell commands, web search, and more. The `cwd` you specify is passed as `--add-dir` so it becomes the agent's workspace; the spawn working directory alone is not enough in headless mode. Persisted `settings.json` permission rules still apply.
+`agy` runs with `--dangerously-skip-permissions`, giving it full tool access: read/write files, run shell commands, web search, and more. Headless agy cannot prompt for permission, so without this flag any tool needing approval is silently denied and the turn ends early. Deny rules in agy's own `settings.json` still apply; when one fires the call returns an error listing `deniedActions`.
+
+The `cwd` you specify is passed as `--add-dir` so it becomes the agent's workspace; the spawn working directory alone is not enough in headless mode.
+
+`--sandbox` is on by default as a check against the permission bypass. It restricts shell commands only: they can read anywhere but write only under `/tmp`. agy's file edit tools can still modify the workspace.
+
+### Timeouts and cancellation
+
+The `timeout` is passed to agy as `--print-timeout`, so agy stops its own turn at the deadline and returns whatever it has. The server reports that as an error with the partial response in the structured output. If agy fails to exit within a few seconds after that, its process group is killed. Cancelling the MCP call (for example, interrupting Claude Code) kills the agy process group immediately.
 
 ### Errors
 
