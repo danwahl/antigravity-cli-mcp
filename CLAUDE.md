@@ -22,6 +22,7 @@ Do not add features speculatively. Do not add abstraction layers for a single to
 The server code lives in `src/index.ts` (entry point) and `src/lib.ts` (pure functions). Keep both small and focused.
 
 ## Build & test
+- `.mcp.json` points the `agy` server at `dist/index.js` for this repo. `npx -y @danwahl/antigravity-mcp` fails from inside the package's own source tree (npx treats the project as satisfying the spec and looks for the bin on PATH), so the project override is required here.
 - `npm run build` to compile with tsc
 - Test manually: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | node dist/index.js`
 
