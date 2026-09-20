@@ -21,8 +21,8 @@ Claude Code ──MCP/stdio──▶ agy-mcp ──spawn──▶ agy -p "..." -
 ### From source
 
 ```sh
-git clone https://github.com/danwahl/gemini-cli-mcp
-cd gemini-cli-mcp
+git clone https://github.com/danwahl/agy-mcp
+cd agy-mcp
 npm install
 npm run build
 ```
@@ -41,7 +41,7 @@ claude mcp add agy -s user -- npx -y @danwahl/agy-mcp
 claude mcp add agy -s project -- npx -y @danwahl/agy-mcp
 ```
 
-Or from source, replace `npx -y @danwahl/agy-mcp` with `node /absolute/path/to/gemini-cli-mcp/dist/index.js`.
+Or from source, replace `npx -y @danwahl/agy-mcp` with `node /absolute/path/to/agy-mcp/dist/index.js`.
 
 Verify with `claude mcp list`.
 

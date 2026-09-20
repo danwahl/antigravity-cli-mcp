@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/danwahl/gemini-cli-mcp.git"
+    "url": "https://github.com/danwahl/agy-mcp.git"
   },
   "keywords": [
     "mcp",
