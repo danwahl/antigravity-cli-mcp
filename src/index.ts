@@ -8,7 +8,7 @@ import { runAgy } from "./lib.js";
 const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 
 const server = new McpServer({
-  name: "antigravity-mcp",
+  name: "antigravity-cli-mcp",
   version,
 });
 

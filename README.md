@@ -1,6 +1,6 @@
-# antigravity-mcp
+# antigravity-cli-mcp
 
-A minimal MCP server that exposes [Antigravity CLI](https://antigravity.google/) (`agy`) as a single tool callable from Claude Code (or any MCP client).
+A minimal MCP server that exposes [Antigravity CLI](https://antigravity.google/docs/cli) (`agy`) as a single tool callable from Claude Code (or any MCP client). This wraps the terminal CLI, not the Antigravity IDE; you need `agy` installed and signed in.
 
 This project started as `gemini-cli-mcp`, wrapping Gemini CLI. Gemini CLI is deprecated in favor of Antigravity, so the server now spawns `agy` instead. The tool interface is the same shape; see [Migrating from gemini-cli-mcp](#migrating-from-gemini-cli-mcp).
 
@@ -9,7 +9,7 @@ This project started as `gemini-cli-mcp`, wrapping Gemini CLI. Gemini CLI is dep
 Claude Code sends prompts to this server via MCP. The server spawns `agy -p "..."` in headless mode and returns the response. Antigravity inherits your Google sign-in, so no API key is required.
 
 ```
-Claude Code ──MCP/stdio──▶ antigravity-mcp ──spawn──▶ agy -p "..." --output-format json --add-dir <cwd>
+Claude Code ──MCP/stdio──▶ antigravity-cli-mcp ──spawn──▶ agy -p "..." --output-format json --add-dir <cwd>
 ```
 
 ## Prerequisites
@@ -21,8 +21,8 @@ Claude Code ──MCP/stdio──▶ antigravity-mcp ──spawn──▶ agy -p
 ### From source
 
 ```sh
-git clone https://github.com/danwahl/antigravity-mcp
-cd antigravity-mcp
+git clone https://github.com/danwahl/antigravity-cli-mcp
+cd antigravity-cli-mcp
 npm install
 npm run build
 ```
@@ -32,16 +32,16 @@ npm run build
 **User install** (available across all projects):
 
 ```sh
-claude mcp add agy -s user -- npx -y @danwahl/antigravity-mcp
+claude mcp add agy -s user -- npx -y @danwahl/antigravity-cli-mcp
 ```
 
 **Project install** (shared with your team via `.mcp.json`):
 
 ```sh
-claude mcp add agy -s project -- npx -y @danwahl/antigravity-mcp
+claude mcp add agy -s project -- npx -y @danwahl/antigravity-cli-mcp
 ```
 
-Or from source, replace `npx -y @danwahl/antigravity-mcp` with `node /absolute/path/to/antigravity-mcp/dist/index.js`.
+Or from source, replace `npx -y @danwahl/antigravity-cli-mcp` with `node /absolute/path/to/antigravity-cli-mcp/dist/index.js`.
 
 Verify with `claude mcp list`.
 
